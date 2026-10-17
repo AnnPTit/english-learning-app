@@ -1,0 +1,23 @@
+services:
+  app:
+    build: .
+    container_name: english-learning-app
+    restart: unless-stopped
+    ports:
+      # Port 3000 trên host đã bị container khác chiếm (xem PLAN.md Phase 0),
+      # Cloudflare Tunnel route "app.web-rtc.cloud" đã trỏ sẵn về localhost:3001.
+      - "3001:3000"
+    env_file:
+      - .env.production
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

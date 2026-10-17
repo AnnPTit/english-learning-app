@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(MEMBER)
+  createdAt    DateTime @default(now())
+
+  decks      Deck[]
+  reviewLogs ReviewLog[]
+}
+
+model Deck {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isPublic    Boolean  @default(false)
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  cards Card[]
+}
+
+model Card {
+  id        String   @id @default(cuid())
+  deckId    String
+  deck      Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  term      String
+  meaning   String
+  example   String?
+  createdAt DateTime @default(now())
+
+  reviewLogs ReviewLog[]
+}
+
+// Trạng thái ôn tập SM-2 hiện tại của một user cho một card (không phải lịch sử từng lần ôn).
+model ReviewLog {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId         String
+  card           Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  repetition     Int      @default(0)
+  easeFactor     Float    @default(2.5)
+  interval       Int      @default(0)
+  dueDate        DateTime @default(now())
+  lastReviewedAt DateTime?
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, cardId])
+}
