@@ -2,7 +2,7 @@
 
 Bối cảnh: dùng cho cá nhân/gia đình, truy cập được từ cả iPhone (cài lên màn hình chính như app) và PC qua trình duyệt thường. Server tự host trên Ubuntu tại nhà, expose ra internet qua Cloudflare Tunnel.
 
-Tech stack: Next.js (App Router, TypeScript) + Tailwind CSS + Prisma + SQLite + NextAuth (Credentials) + Serwist (`@serwist/turbopack`, không dùng next-pwa vì không tương thích Turbopack). Đóng gói bằng Docker, deploy bằng docker-compose (app + cloudflared).
+Tech stack: Next.js (App Router, TypeScript) + Tailwind CSS + Prisma + SQLite + NextAuth (Credentials) + Serwist (`@serwist/turbopack`, không dùng next-pwa vì không tương thích Turbopack). Đóng gói bằng Docker, deploy bằng docker-compose (chỉ service app — cloudflared chạy sẵn dạng systemd trên host, xem Phase 0).
 
 ## Trạng thái các phase
 
@@ -15,7 +15,7 @@ Tech stack: Next.js (App Router, TypeScript) + Tailwind CSS + Prisma + SQLite + 
 - [ ] Phase 6: Module Quiz ngữ pháp — *tạm bỏ qua theo yêu cầu, quay lại sau*
 - [ ] Phase 7: Trang quản trị (Admin dashboard) — *tạm bỏ qua theo yêu cầu, quay lại sau*
 - [x] Phase 8: PWA hóa cho iPhone (manifest, icon, service worker)
-- [ ] Phase 9: Đóng gói Docker và deploy lên Ubuntu
+- [~] Phase 9: Đóng gói Docker và deploy lên Ubuntu — *code/cấu hình đã xong, chờ bạn deploy thật trên server rồi xác nhận*
 - [ ] Phase 10: Mở rộng sau MVP (TTS, push notification, thống kê, backup tự động)
 
 ## Chi tiết từng phase
@@ -85,7 +85,53 @@ Route `/admin`, chỉ ADMIN truy cập (kiểm tra role qua middleware). Quản 
 **Giới hạn đã biết:** chưa test được thật trên iPhone (bấm "Thêm vào màn hình chính", mở app từ icon, kiểm tra chạy standalone không hiện thanh địa chỉ) vì phiên này không có thiết bị/trình duyệt thật để thao tác. Cần tự test sau khi deploy xong Phase 9 (phải có HTTPS thật qua domain mới test được trên iPhone, Add to Home Screen không hoạt động đáng tin cậy qua `http://localhost`).
 
 ### Phase 9: Đóng gói Docker và deploy
-Dockerfile cho app, docker-compose gồm app và cloudflared, deploy lên Ubuntu server nhà, kiểm tra truy cập qua domain Cloudflare từ cả iPhone và PC.
+Chỉ có docker-compose cho **app** (không có service cloudflared), vì ở Phase 0 đã xác định tunnel Cloudflare chạy dạng systemd service trực tiếp trên host, không phải Docker — app chỉ cần publish đúng port `3001:3000` ra host để khớp route đã cấu hình.
+
+- [Dockerfile](Dockerfile): multi-stage build trên base image `node:22-bookworm-slim` (Debian, không dùng Alpine) vì `better-sqlite3` là native module, Debian/glibc có khả năng cao hơn tải được prebuilt binary thay vì phải tự biên dịch trên con chip ARM yếu của TV box; nếu không có prebuilt binary thì vẫn có `python3 make g++` trong stage build để tự compile. Stage cuối copy toàn bộ `node_modules` (kể cả devDependencies) thay vì dùng Next.js `output: standalone`, vì cơ chế tracing file của standalone mode không đáng tin cậy với native module — đổi lấy image to hơn một chút để tránh thiếu dependency lúc chạy thật.
+- [docker-compose.yml](docker-compose.yml): map `./data:/app/data` để file SQLite không mất khi container restart/update, `DATABASE_URL` trỏ vào `/app/data/prod.db`. Container chạy as root (không tạo non-root user) để tránh vấn đề quyền ghi vào bind mount từ host — chấp nhận đánh đổi này vì đây là app cá nhân/gia đình sau Cloudflare Tunnel, không phải dịch vụ public đa người dùng.
+- Container tự chạy `prisma migrate deploy` trước khi start mỗi lần container khởi động (an toàn, idempotent). Lệnh `prisma db seed` KHÔNG tự chạy — phải chạy tay một lần sau khi deploy để tránh seed lại dữ liệu ngoài ý muốn.
+- [.env.production.example](.env.production.example): template cho file `.env.production` thật sẽ tạo trên server (không commit), gồm `DATABASE_URL`, `NEXTAUTH_SECRET` (phải tạo secret mới, không dùng lại bản dev), `NEXTAUTH_URL=https://app.web-rtc.cloud`, `SEED_USERS`.
+
+**Giới hạn đã biết:** không test build Docker được ngay trên máy đang code (Docker Desktop không khởi động được, WSL2 backend bị dừng — khả năng do môi trường sandbox phiên này không hỗ trợ nested virtualization). Đã bù lại bằng cách: review kỹ logic Dockerfile, và chạy `docker compose config` (không cần daemon) để xác nhận cú pháp docker-compose.yml hợp lệ, resolve đúng toàn bộ biến môi trường và volume. YAML của GitHub Actions workflow cũng đã validate bằng `python -c "import yaml..."`.
+
+#### Cập nhật kiến trúc deploy: build qua GitHub Actions thay vì build trên server
+
+Theo cùng mẫu [.github/workflows/main.yml của repo webrtc-angular](https://github.com/AnnPTit/webrtc-angular/blob/main/.github/workflows/main.yml) đang dùng cho các app khác, đã đổi sang: GitHub Actions build + push image lên Docker Hub (namespace `anptit2003`, dùng QEMU + Buildx để build `linux/arm64` ngay trên runner `ubuntu-latest`), server chỉ việc `docker compose pull` thay vì tự build. Lý do đổi: nhất quán với quy trình CI/CD sẵn có, và né được việc build native module (`better-sqlite3`) trên con chip ARM yếu của TV box mỗi lần deploy.
+
+- [.github/workflows/main.yml](.github/workflows/main.yml): trigger khi push vào `main`, build + push 2 tag (`latest` và tag theo `github.sha`), sau đó gọi một webhook để server tự deploy (bước "Trigger deploy on server", giống repo webrtc-angular).
+- [docker-compose.yml](docker-compose.yml) đã đổi `build: .` thành `image: anptit2003/english-learning-app:latest`.
+- **Cần bạn tự thiết lập (tôi không có thông tin/quyền truy cập):**
+  - Secrets trong GitHub repo này: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` (giống repo webrtc-angular), và `DEPLOY_WEBHOOK_URL` + `DEPLOY_WEBHOOK_TOKEN` cho endpoint deploy riêng của app này (webrtc-angular dùng `deploy.web-rtc.cloud/hooks/deploy-frontend`, app này cần một endpoint khác, ví dụ `deploy.web-rtc.cloud/hooks/deploy-english-app`, trỏ tới script chạy `docker compose pull && docker compose up -d` cho đúng thư mục project trên server).
+  - File `Dockerfile` vẫn giữ nguyên (CI dùng chính Dockerfile này để build), không cần sửa gì thêm trừ khi muốn tối ưu thêm sau này.
+
+#### Hướng dẫn deploy (chạy trên server Ubuntu, một lần đầu tiên)
+
+```bash
+# 1. Lấy code về (chỉ cần để có docker-compose.yml, .env.production.example; code app chạy từ image đã build sẵn)
+git clone <url-repo-của-bạn> english-learning-app
+cd english-learning-app
+
+# 2. Tạo file .env.production thật, điền giá trị thật
+cp .env.production.example .env.production
+nano .env.production   # sửa NEXTAUTH_SECRET (tạo mới, xem lệnh trong file) và SEED_USERS
+
+# 3. Pull image đã build sẵn từ Docker Hub và chạy
+docker compose pull
+docker compose up -d
+
+# 4. Theo dõi log, đảm bảo migration chạy xong và server start thành công
+docker compose logs -f app
+
+# 5. Seed tài khoản gia đình (chỉ chạy một lần)
+docker compose exec app npx prisma db seed
+
+# 6. Kiểm tra health check ngay trên server
+curl http://localhost:3001/api/health
+```
+
+Sau đó mở `https://app.web-rtc.cloud` từ trình duyệt để kiểm tra từ bên ngoài, thử đăng nhập, và trên iPhone thử bấm Share → "Thêm vào MH chính" để test PWA thật.
+
+Từ lần sau, mỗi khi push code mới vào `main`, GitHub Actions tự build + push image + gọi webhook để server tự `pull` và `up -d` lại — không cần thao tác tay trên server nữa (miễn là đã thiết lập xong webhook endpoint ở trên). Nếu chưa thiết lập webhook, cần tự SSH chạy `docker compose pull && docker compose up -d` sau mỗi lần build xong.
 
 ### Phase 10: Mở rộng sau MVP
 Text to Speech phát âm, push notification nhắc ôn bài (iOS 16.4+ hỗ trợ Web Push cho PWA đã cài), biểu đồ thống kê chi tiết, backup tự động định kỳ.

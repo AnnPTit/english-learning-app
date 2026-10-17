@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    # Image được build và push tự động bởi GitHub Actions (xem .github/workflows/main.yml).
+    # Server chỉ cần "docker compose pull && docker compose up -d", không build tại chỗ.
+    image: anptit2003/english-learning-app:latest
     container_name: english-learning-app
     restart: unless-stopped
     ports:
