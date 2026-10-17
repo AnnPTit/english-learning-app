@@ -15,7 +15,7 @@ Tech stack: Next.js (App Router, TypeScript) + Tailwind CSS + Prisma + SQLite + 
 - [ ] Phase 6: Module Quiz ngữ pháp — *tạm bỏ qua theo yêu cầu, quay lại sau*
 - [ ] Phase 7: Trang quản trị (Admin dashboard) — *tạm bỏ qua theo yêu cầu, quay lại sau*
 - [x] Phase 8: PWA hóa cho iPhone (manifest, icon, service worker)
-- [~] Phase 9: Đóng gói Docker và deploy lên Ubuntu — *code/cấu hình đã xong, chờ bạn deploy thật trên server rồi xác nhận*
+- [x] Phase 9: Đóng gói Docker và deploy lên Ubuntu — đã deploy thật, test trên iPhone xác nhận cài PWA và chạy toàn màn hình thành công
 - [ ] Phase 10: Mở rộng sau MVP (TTS, push notification, thống kê, backup tự động)
 
 ## Chi tiết từng phase
@@ -145,6 +145,23 @@ Server đã có sẵn `webhook` (adnanh/webhook) chạy như systemd service, c�
 - URL gọi từ GitHub Actions: `https://deploy.web-rtc.cloud/hooks/deploy-english-app` (GitHub Secret `DEPLOY_WEBHOOK_URL`)
 
 **Lưu ý bảo mật:** trong lúc setup, token Docker Hub và các token Bearer của `hooks.json` từng bị dán vào chat (ảnh chụp màn hình, nội dung file). Nên thu hồi/tạo mới các token này sau khi mọi thứ đã chạy ổn định, để tránh rủi ro vì các token đó đã nằm trong lịch sử chat.
+
+**Bài học khi setup thật:** `docker compose restart` KHÔNG nạp lại biến môi trường mới trong `.env.production` (chỉ khởi động lại đúng container cũ với env cũ) — phải dùng `docker compose up -d` để container được tạo lại với env mới. Gặp đúng lỗi này khi đổi `SEED_USERS` mà đăng nhập vẫn báo sai.
+
+## Thiết kế lại giao diện (sau khi deploy thành công)
+
+Sau khi xác nhận app chạy ổn trên production, đã thiết kế lại toàn bộ UI cho đẹp và chuyên nghiệp hơn bản MVP ban đầu (vốn chỉ có border đen trắng đơn giản). Design system áp dụng, các phase sau (5, 6, 7) nên theo đúng quy ước này để nhất quán:
+
+- **Màu sắc:** brand color `#4f46e5` (indigo-600, khớp với màu trong manifest/icon PWA đã tạo ở Phase 8), định nghĩa qua CSS variable `--brand`/`--brand-dark` và Tailwind `@theme inline` trong [globals.css](src/app/globals.css) — dùng `bg-brand`, `text-brand-dark` thay vì hardcode `indigo-600`. Nền trang màu `#f8fafc` (slate-50) thay vì trắng tinh, tạo chiều sâu nhẹ.
+- **Đã bỏ dark mode tự động** (media query `prefers-color-scheme`) vì các component chưa có biến thể dark, tránh tình trạng nửa sáng nửa tối khó đọc. Chỉ có một theme sáng duy nhất cho toàn bộ app.
+- **Icon:** dùng thư viện `lucide-react` (nhẹ, tree-shakeable, nét line rõ ràng hợp với phong cách tối giản).
+- **Card pattern:** `rounded-2xl border border-indigo-950/5 bg-white p-4 shadow-sm shadow-indigo-950/5` — dùng lại pattern này cho mọi khối nội dung (deck card, form, danh sách thẻ) để đồng bộ.
+- **Button pattern:** nút chính `rounded-xl bg-brand ... shadow-sm shadow-indigo-300 hover:bg-brand-dark`, nút phụ dạng ghost/icon-only với hover nhẹ `hover:bg-indigo-50`.
+- **Input pattern:** `rounded-xl border border-indigo-950/10 ... focus:border-brand focus:ring-2 focus:ring-brand/20`.
+- **Màn hình học flashcard** ([study-session.tsx](src/app/decks/[deckId]/study/study-session.tsx)): thêm hiệu ứng lật thẻ 3D thật (CSS `transform-style: preserve-3d` + `rotateY`, định nghĩa trong `globals.css` bằng class `.flip-card-inner`/`.flip-card-face`), thanh progress bar hiển thị tiến độ phiên học, 4 nút đánh giá đổi từ nút màu đặc sang nền nhạt + icon (X/Frown/Smile/Sparkle) cho tinh tế hơn.
+- Đã test lại toàn bộ qua curl với dữ liệu thật sau khi redesign (trang chủ, chi tiết deck, màn hình học đều render đúng nội dung), và chạy lại `npm run verify:srs` xác nhận logic SRS không bị ảnh hưởng.
+
+**Giới hạn đã biết:** không có công cụ xem trước trình duyệt nào kết nối trong phiên này (thử dùng Claude Preview nhưng bị chặn bởi bộ lọc an toàn khi tạo file cấu hình `.claude/launch.json`), nên chưa tự mắt thấy được hiệu ứng lật thẻ 3D và các animation hover chạy mượt thế nào — chỉ xác nhận được cấu trúc HTML/class đúng qua curl. Cần tự mở app thật để đánh giá cảm quan cuối cùng.
 
 ### Phase 10: Mở rộng sau MVP
 Text to Speech phát âm, push notification nhắc ôn bài (iOS 16.4+ hỗ trợ Web Push cho PWA đã cài), biểu đồ thống kê chi tiết, backup tự động định kỳ.
