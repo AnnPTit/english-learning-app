@@ -106,32 +106,45 @@ Theo cùng mẫu [.github/workflows/main.yml của repo webrtc-angular](https://
 
 #### Hướng dẫn deploy (chạy trên server Ubuntu, một lần đầu tiên)
 
+**Quan trọng: KHÔNG git clone cả repo lên server.** Vì image đã được build sẵn và push lên Docker Hub qua CI, server chỉ cần đúng 2 file nhỏ (`docker-compose.yml` và `.env.production`), không cần source code — tiết kiệm dung lượng ROM vốn rất hạn chế của con TV box này. Đây cũng chính là cách các app khác (webrtc-angular, v.v.) đang được deploy: chỉ có một `docker-compose.yml` chung tại `/root/hass/portainer/compose/1`, server không giữ source code của app nào cả.
+
 ```bash
-# 1. Lấy code về (chỉ cần để có docker-compose.yml, .env.production.example; code app chạy từ image đã build sẵn)
-git clone <url-repo-của-bạn> english-learning-app
-cd english-learning-app
+mkdir -p /root/english-learning-app
+cd /root/english-learning-app
 
-# 2. Tạo file .env.production thật, điền giá trị thật
-cp .env.production.example .env.production
-nano .env.production   # sửa NEXTAUTH_SECRET (tạo mới, xem lệnh trong file) và SEED_USERS
+# Tạo docker-compose.yml y hệt file trong repo (copy nội dung từ docker-compose.yml)
+nano docker-compose.yml
 
-# 3. Pull image đã build sẵn từ Docker Hub và chạy
+# Tạo .env.production, điền giá trị thật (NEXTAUTH_SECRET tạo bằng: openssl rand -base64 32)
+nano .env.production
+
+# Pull image đã build sẵn từ Docker Hub và chạy
 docker compose pull
 docker compose up -d
 
-# 4. Theo dõi log, đảm bảo migration chạy xong và server start thành công
+# Theo dõi log, đảm bảo migration chạy xong và server start thành công
 docker compose logs -f app
 
-# 5. Seed tài khoản gia đình (chỉ chạy một lần)
+# Seed tài khoản gia đình (chỉ chạy một lần)
 docker compose exec app npx prisma db seed
 
-# 6. Kiểm tra health check ngay trên server
+# Kiểm tra health check ngay trên server
 curl http://localhost:3001/api/health
 ```
 
 Sau đó mở `https://app.web-rtc.cloud` từ trình duyệt để kiểm tra từ bên ngoài, thử đăng nhập, và trên iPhone thử bấm Share → "Thêm vào MH chính" để test PWA thật.
 
-Từ lần sau, mỗi khi push code mới vào `main`, GitHub Actions tự build + push image + gọi webhook để server tự `pull` và `up -d` lại — không cần thao tác tay trên server nữa (miễn là đã thiết lập xong webhook endpoint ở trên). Nếu chưa thiết lập webhook, cần tự SSH chạy `docker compose pull && docker compose up -d` sau mỗi lần build xong.
+Từ lần sau, mỗi khi push code mới vào `main`, GitHub Actions tự build + push image + gọi webhook `deploy-english-app` (xem bên dưới) để server tự `pull` và `up -d` lại tại `/root/english-learning-app` — không cần thao tác tay trên server nữa.
+
+#### Webhook tự động deploy
+
+Server đã có sẵn `webhook` (adnanh/webhook) chạy như systemd service, cấu hình tại `/opt/webhook/hooks.json`, nghe ở port `9001` (Cloudflare Tunnel route `deploy.web-rtc.cloud/hooks/*` đã trỏ sẵn, dùng chung cho các app khác). Đã thêm hook mới `deploy-english-app`:
+
+- Script: `/opt/webhook/deploy-english-app.sh` — chạy `cd /root/english-learning-app && docker compose pull && docker compose up -d && docker image prune -f`
+- Trigger qua header `Authorization: Bearer <token>`, token lưu trong GitHub Secret `DEPLOY_WEBHOOK_TOKEN`
+- URL gọi từ GitHub Actions: `https://deploy.web-rtc.cloud/hooks/deploy-english-app` (GitHub Secret `DEPLOY_WEBHOOK_URL`)
+
+**Lưu ý bảo mật:** trong lúc setup, token Docker Hub và các token Bearer của `hooks.json` từng bị dán vào chat (ảnh chụp màn hình, nội dung file). Nên thu hồi/tạo mới các token này sau khi mọi thứ đã chạy ổn định, để tránh rủi ro vì các token đó đã nằm trong lịch sử chat.
 
 ### Phase 10: Mở rộng sau MVP
 Text to Speech phát âm, push notification nhắc ôn bài (iOS 16.4+ hỗ trợ Web Push cho PWA đã cài), biểu đồ thống kê chi tiết, backup tự động định kỳ.
