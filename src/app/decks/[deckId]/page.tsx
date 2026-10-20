@@ -25,7 +25,7 @@ export default async function DeckPage({
   const canEdit = deck.ownerId === userId || session!.user.role === "ADMIN";
 
   return (
-    <main className="mx-auto w-full max-w-md flex-1 space-y-5 p-4 pb-10">
+    <main className="mx-auto w-full max-w-md flex-1 space-y-5 p-4 pb-28">
       <Link
         href="/"
         className="inline-flex items-center gap-1 text-sm text-foreground/50 transition-colors hover:text-brand-dark"

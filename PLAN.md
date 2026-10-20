@@ -17,6 +17,7 @@ Tech stack: Next.js (App Router, TypeScript) + Tailwind CSS + Prisma + SQLite + 
 - [x] Phase 8: PWA hóa cho iPhone (manifest, icon, service worker)
 - [x] Phase 9: Đóng gói Docker và deploy lên Ubuntu — đã deploy thật, test trên iPhone xác nhận cài PWA và chạy toàn màn hình thành công
 - [ ] Phase 10: Mở rộng sau MVP (TTS, push notification, thống kê, backup tự động)
+- [x] Tính năng ngoài kế hoạch: Todo list cá nhân (`/todos`), thêm sau khi deploy xong Phase 9
 
 ## Chi tiết từng phase
 
@@ -188,3 +189,31 @@ Ghi chú: đánh dấu `[x]` vào phần Trạng thái mỗi khi hoàn thành m�
 - **Quan trọng — đã tắt `cacheComponents` trong `next.config.ts`:** bản scaffold mặc định của Next.js 16 bật sẵn `cacheComponents: true`, khiến Route Handler/Server Component không có dynamic API (cookies/headers) bị prerender tĩnh lúc build và đóng băng kết quả mãi mãi (phát hiện qua việc `/api/health` báo sai số user sau khi đã seed). Vì app này sau middleware gần như 100% là dữ liệu động theo từng user, đã tắt hẳn tính năng này thay vì phải nhớ gọi `connection()` ở từng route. Các phase sau (Flashcard, Quiz, Admin) không cần lo vụ cache tĩnh này nữa.
 - Next.js 16 đã deprecate quy ước file `middleware.ts` (khuyến nghị đổi tên thành `proxy.ts`), hiện vẫn chạy được (chỉ có warning) nên chưa đổi, nhưng nếu sau này nâng cấp Next.js có thể cần chạy `npx @next/codemod@canary middleware-to-proxy .`
 - `export { default } from "next-auth/middleware"` (cách dùng `withAuth` chuẩn của NextAuth v4) không được Next.js 16 nhận diện là function export hợp lệ. Đã viết middleware thủ công bằng `getToken` từ `next-auth/jwt` thay thế.
+
+## Tính năng Todo list cá nhân (ngoài kế hoạch ban đầu)
+
+Thêm theo yêu cầu sau khi đã deploy xong Phase 9: mỗi user có một danh sách việc cần làm riêng tư (không liên quan tới học tiếng Anh), không ai khác thấy được, kể cả ADMIN.
+
+- Model `Todo` (`userId`, `title`, `completed`) trong [prisma/schema.prisma](prisma/schema.prisma), migration `add_todo`.
+- [src/lib/todos.ts](src/lib/todos.ts): `listTodos(userId)`, sắp xếp việc chưa xong lên trước.
+- [src/app/todos/actions.ts](src/app/todos/actions.ts): `createTodo`, `toggleTodo`, `deleteTodo` — mỗi action đều kiểm tra `todo.userId !== userId` trước khi sửa/xóa để đảm bảo không ai đụng được todo của người khác (kể cả đoán được ID).
+- [src/app/todos/page.tsx](src/app/todos/page.tsx): UI dùng toàn form server-rendered (không cần client JS), giống pattern xóa thẻ ở Phase 4 — nút tick/xóa đều là `<button type="submit">` trong `<form action={...bind(null, id)}>`.
+- Thêm [src/components/bottom-nav.tsx](src/components/bottom-nav.tsx): thanh tab dưới cùng kiểu app native (Học / Việc cần làm), vì app chạy fullscreen trên iPhone nên pattern tab bar phù hợp hơn menu thông thường. Dùng `fixed` (không phải `sticky`) để luôn ghim đáy màn hình bất kể nội dung trang ngắn hay dài, có padding `env(safe-area-inset-bottom)` để không bị vùng home indicator của iPhone che mất — phải thêm `viewportFit: "cover"` vào `viewport` export trong `layout.tsx` thì `env(safe-area-inset-bottom)` mới có giá trị thật trên iPhone có notch.
+- Mọi trang `<main>` đều tăng `padding-bottom` lên `pb-28` để nội dung cuối trang không bị thanh tab bar che mất.
+
+**Bug phát hiện khi thêm bottom nav:** `BottomNav` dùng `useSession()` (client hook), lúc SSR ban đầu trạng thái session là `"loading"` nên nav bị thiếu trong HTML đầu tiên (xác nhận qua curl, chỉ thấy nav sau khi hydrate). Sửa bằng cách lấy session ở `layout.tsx` (Server Component) qua `getServerSession`, truyền xuống `<SessionProvider session={session}>` trong [src/components/providers.tsx](src/components/providers.tsx) — theo đúng khuyến nghị của NextAuth, tránh lượt fetch session dư thừa phía client và màn hình không bị "nháy" thiếu nav lúc tải trang.
+
+Đã test qua curl: middleware chặn `/todos` khi chưa đăng nhập, empty state hiện đúng khi chưa có todo, cả 2 mục "đang làm" và "đã xong" hiển thị đúng sau khi seed dữ liệu thật, bottom nav xuất hiện ngay trong SSR HTML sau khi sửa lỗi session ở trên. Đã chạy lại `verify:srs` xác nhận không ảnh hưởng tính năng Flashcard.
+
+## Đơn giản hóa đăng nhập: access key thay cho email/mật khẩu
+
+Vì chỉ một mình bạn dùng app, đã bỏ hẳn đăng nhập email/mật khẩu, thay bằng một mã khóa đơn (access key) để giảm phiền phức — nhưng **không bỏ xác thực hoàn toàn**, vì app đang public ra cả internet qua Cloudflare Tunnel (`app.web-rtc.cloud`), ai biết domain cũng truy cập được nếu không có gì chặn.
+
+- [src/lib/auth.ts](src/lib/auth.ts): chỉ còn 1 `CredentialsProvider` id `access-key` — so khớp `ACCESS_KEY` trong biến môi trường bằng `timingSafeEqual` (so sánh an toàn trước tấn công timing), nếu đúng thì tự động đăng nhập dưới danh nghĩa user có `role: ADMIN` đầu tiên trong DB (giữ nguyên toàn bộ model dữ liệu Deck/Todo gắn theo `userId` mà không cần sửa schema). Đã xóa provider email/mật khẩu và import `bcrypt` không dùng nữa (file `prisma/seed.ts` vẫn giữ `bcrypt` vì cột `passwordHash` trong DB vẫn `NOT NULL`, chỉ là cột này không còn dùng để đăng nhập nữa).
+- Session kéo dài `maxAge: 180 ngày` thay vì mặc định của NextAuth, nên gần như không phải đăng nhập lại.
+- [src/app/login/page.tsx](src/app/login/page.tsx): chỉ còn 1 ô nhập mã khóa, không còn email/mật khẩu.
+- Thêm biến môi trường `ACCESS_KEY` vào `.env`, `.env.example`, `.env.production.example`.
+
+**Việc cần làm trên server:** thêm `ACCESS_KEY` vào `.env.production` (chọn một chuỗi dài, khó đoán — không dùng giá trị ngắn như lúc test local) rồi `docker compose up -d` để nạp lại env, sau đó dùng mã khóa đó để đăng nhập thay vì email/mật khẩu cũ.
+
+Đã test qua curl: sai mã khóa bị từ chối (401), đúng mã khóa đăng nhập thành công và truy cập được trang chủ, trang `/login` chỉ còn hiện đúng 1 ô "Mã khóa".

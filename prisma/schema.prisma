@@ -27,6 +27,7 @@ model User {
 
   decks      Deck[]
   reviewLogs ReviewLog[]
+  todos      Todo[]
 }
 
 model Deck {
@@ -68,4 +69,13 @@ model ReviewLog {
   updatedAt      DateTime @updatedAt
 
   @@unique([userId, cardId])
+}
+
+model Todo {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

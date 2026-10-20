@@ -21,7 +21,7 @@ export default async function StudyPage({
   const dueCards = await getDueCards(userId, deckId, 50);
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col p-4">
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col p-4 pb-28">
       <StudySession
         deckId={deckId}
         deckName={deck.name}

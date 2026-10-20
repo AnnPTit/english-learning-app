@@ -20,7 +20,7 @@ export default async function HomePage() {
   const firstName = session!.user.name?.split(" ")[0] ?? "";
 
   return (
-    <main className="mx-auto w-full max-w-md flex-1 space-y-6 p-4 pb-10">
+    <main className="mx-auto w-full max-w-md flex-1 space-y-6 p-4 pb-28">
       <div className="space-y-1 pt-2">
         <h1 className="text-xl font-semibold text-foreground">
           Chào, {firstName} 👋

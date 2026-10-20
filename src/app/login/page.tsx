@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { BookOpenText, Mail, Lock, ArrowRight, TriangleAlert } from "lucide-react";
+import { BookOpenText, KeyRound, ArrowRight, TriangleAlert } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [key, setKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -17,16 +16,15 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
+    const result = await signIn("access-key", {
+      key,
       redirect: false,
     });
 
     setLoading(false);
 
     if (result?.error) {
-      setError("Email hoặc mật khẩu không đúng");
+      setError("Mã khóa không đúng");
       return;
     }
 
@@ -51,50 +49,28 @@ export default function LoginPage() {
             Học Tiếng Anh
           </h1>
           <p className="text-sm text-foreground/50">
-            Đăng nhập để tiếp tục học tập
+            Nhập mã khóa để tiếp tục
           </p>
         </div>
 
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <label
-              htmlFor="email"
-              className="text-xs font-medium text-foreground/60"
-            >
-              Email
-            </label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground/30" />
-              <input
-                id="email"
-                type="email"
-                required
-                autoFocus
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border border-indigo-950/10 bg-white py-2.5 pr-3 pl-10 text-sm outline-none transition-shadow focus:border-brand focus:ring-2 focus:ring-brand/20"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label
-              htmlFor="password"
-              className="text-xs font-medium text-foreground/60"
-            >
-              Mật khẩu
-            </label>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground/30" />
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-indigo-950/10 bg-white py-2.5 pr-3 pl-10 text-sm outline-none transition-shadow focus:border-brand focus:ring-2 focus:ring-brand/20"
-              />
-            </div>
+        <div className="space-y-1.5">
+          <label
+            htmlFor="key"
+            className="text-xs font-medium text-foreground/60"
+          >
+            Mã khóa
+          </label>
+          <div className="relative">
+            <KeyRound className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground/30" />
+            <input
+              id="key"
+              type="password"
+              required
+              autoFocus
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              className="w-full rounded-xl border border-indigo-950/10 bg-white py-2.5 pr-3 pl-10 text-sm outline-none transition-shadow focus:border-brand focus:ring-2 focus:ring-brand/20"
+            />
           </div>
         </div>
 
@@ -110,7 +86,7 @@ export default function LoginPage() {
           disabled={loading}
           className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-300 transition-colors hover:bg-brand-dark disabled:opacity-50"
         >
-          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+          {loading ? "Đang kiểm tra..." : "Vào app"}
           {!loading && <ArrowRight className="size-4" />}
         </button>
       </form>

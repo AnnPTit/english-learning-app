@@ -1,34 +1,38 @@
+import { timingSafeEqual } from "node:crypto";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
+function safeEqual(a: string, b: string) {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 export const authOptions: NextAuthOptions = {
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 180 }, // 180 ngày, đỡ phải đăng nhập lại
   pages: { signIn: "/login" },
   providers: [
     CredentialsProvider({
-      name: "Email và mật khẩu",
+      id: "access-key",
+      name: "Access key",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Mật khẩu", type: "password" },
+        key: { label: "Access key", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        const accessKey = process.env.ACCESS_KEY;
+        if (!accessKey || !credentials?.key) return null;
+        if (!safeEqual(credentials.key, accessKey)) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
-        if (!user) return null;
-
-        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
-        if (!isValid) return null;
+        const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
+        if (!admin) return null;
 
         return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
+          id: admin.id,
+          email: admin.email,
+          name: admin.name,
+          role: admin.role,
         };
       },
     }),
