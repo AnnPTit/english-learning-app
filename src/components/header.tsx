@@ -1,18 +1,10 @@
-import { getServerSession } from "next-auth/next";
 import Link from "next/link";
 import { BookOpenText } from "lucide-react";
-import { authOptions } from "@/lib/auth";
-import { SignOutButton } from "./sign-out-button";
 
-export async function Header() {
-  const session = await getServerSession(authOptions);
-  if (!session) return null;
-
-  const initial = session.user.name?.trim().charAt(0).toUpperCase() || "?";
-
+export function Header() {
   return (
     <header className="sticky top-0 z-10 border-b border-indigo-950/5 bg-white/80 px-4 py-3 backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-md items-center justify-between">
+      <div className="mx-auto flex w-full max-w-md items-center">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex size-8 items-center justify-center rounded-lg bg-brand text-white shadow-sm shadow-indigo-300">
             <BookOpenText className="size-4.5" strokeWidth={2.25} />
@@ -21,12 +13,6 @@ export async function Header() {
             Học Tiếng Anh
           </span>
         </Link>
-        <div className="flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-brand-dark">
-            {initial}
-          </span>
-          <SignOutButton />
-        </div>
       </div>
     </header>
   );

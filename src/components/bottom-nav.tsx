@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { BookOpenText, ListTodo } from "lucide-react";
 
 const TABS = [
@@ -11,10 +10,7 @@ const TABS = [
 ];
 
 export function BottomNav() {
-  const { status } = useSession();
   const pathname = usePathname();
-
-  if (status !== "authenticated") return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-indigo-950/5 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">

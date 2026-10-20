@@ -1,8 +1,7 @@
-import { getServerSession } from "next-auth/next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, GraduationCap, Trash2, Plus, Inbox } from "lucide-react";
-import { authOptions } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { createCard, deleteCard } from "../actions";
 
@@ -12,17 +11,16 @@ export default async function DeckPage({
   params: Promise<{ deckId: string }>;
 }) {
   const { deckId } = await params;
-  const session = await getServerSession(authOptions);
-  const userId = session!.user.id;
+  const user = await getCurrentUser();
 
   const deck = await prisma.deck.findUnique({
     where: { id: deckId },
     include: { cards: { orderBy: { createdAt: "asc" } } },
   });
   if (!deck) notFound();
-  if (!deck.isPublic && deck.ownerId !== userId) notFound();
+  if (!deck.isPublic && deck.ownerId !== user.id) notFound();
 
-  const canEdit = deck.ownerId === userId || session!.user.role === "ADMIN";
+  const canEdit = deck.ownerId === user.id;
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 space-y-5 p-4 pb-28">

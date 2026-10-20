@@ -1,23 +1,23 @@
-import { getServerSession } from "next-auth/next";
 import Link from "next/link";
 import { Plus, Layers, Flame, ChevronRight, Sparkles } from "lucide-react";
-import { authOptions } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/current-user";
 import { listVisibleDecks, countDueCards } from "@/lib/decks";
 
-export default async function HomePage() {
-  const session = await getServerSession(authOptions);
-  const userId = session!.user.id;
+export const dynamic = "force-dynamic";
 
-  const decks = await listVisibleDecks(userId);
+export default async function HomePage() {
+  const user = await getCurrentUser();
+
+  const decks = await listVisibleDecks(user.id);
   const decksWithDue = await Promise.all(
     decks.map(async (deck) => ({
       ...deck,
-      dueCount: await countDueCards(userId, deck.id),
+      dueCount: await countDueCards(user.id, deck.id),
     })),
   );
 
   const totalDue = decksWithDue.reduce((sum, d) => sum + d.dueCount, 0);
-  const firstName = session!.user.name?.split(" ")[0] ?? "";
+  const firstName = user.name.split(" ")[0] ?? "";
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 space-y-6 p-4 pb-28">

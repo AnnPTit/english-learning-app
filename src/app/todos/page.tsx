@@ -1,14 +1,14 @@
-import { getServerSession } from "next-auth/next";
 import { CheckSquare, Square, Trash2, ListTodo, Plus } from "lucide-react";
-import { authOptions } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/current-user";
 import { listTodos } from "@/lib/todos";
 import { createTodo, toggleTodo, deleteTodo } from "./actions";
 
-export default async function TodosPage() {
-  const session = await getServerSession(authOptions);
-  const userId = session!.user.id;
+export const dynamic = "force-dynamic";
 
-  const todos = await listTodos(userId);
+export default async function TodosPage() {
+  const user = await getCurrentUser();
+
+  const todos = await listTodos(user.id);
   const activeTodos = todos.filter((t) => !t.completed);
   const completedTodos = todos.filter((t) => t.completed);
 

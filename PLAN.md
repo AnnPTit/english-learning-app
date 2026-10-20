@@ -2,13 +2,13 @@
 
 Bối cảnh: dùng cho cá nhân/gia đình, truy cập được từ cả iPhone (cài lên màn hình chính như app) và PC qua trình duyệt thường. Server tự host trên Ubuntu tại nhà, expose ra internet qua Cloudflare Tunnel.
 
-Tech stack: Next.js (App Router, TypeScript) + Tailwind CSS + Prisma + SQLite + NextAuth (Credentials) + Serwist (`@serwist/turbopack`, không dùng next-pwa vì không tương thích Turbopack). Đóng gói bằng Docker, deploy bằng docker-compose (chỉ service app — cloudflared chạy sẵn dạng systemd trên host, xem Phase 0).
+Tech stack: Next.js (App Router, TypeScript) + Tailwind CSS + Prisma + SQLite + Serwist (`@serwist/turbopack`, không dùng next-pwa vì không tương thích Turbopack). Đóng gói bằng Docker, deploy bằng docker-compose (chỉ service app — cloudflared chạy sẵn dạng systemd trên host, xem Phase 0). **Không còn NextAuth/đăng nhập** (xem mục "Bỏ hoàn toàn đăng nhập" bên dưới).
 
 ## Trạng thái các phase
 
 - [x] Phase 0: Hạ tầng mạng (Cloudflare Tunnel, Docker trên Ubuntu)
 - [x] Phase 1: Khởi tạo project (Next.js, TypeScript, Tailwind, Prisma, SQLite)
-- [x] Phase 2: Auth và phân quyền (NextAuth Credentials, role ADMIN/MEMBER)
+- [x] ~~Phase 2: Auth và phân quyền (NextAuth Credentials, role ADMIN/MEMBER)~~ — **đã gỡ bỏ hoàn toàn**, xem mục riêng cuối file
 - [x] Phase 3: Data model và thuật toán SRS (Deck, Card, ReviewLog, SM-2)
 - [x] Phase 4: Giao diện học Flashcard (mobile first)
 - [ ] Phase 5: Giao diện responsive cho PC (sidebar, phím tắt, table view) — *tạm bỏ qua theo yêu cầu, quay lại sau*
@@ -205,7 +205,7 @@ Thêm theo yêu cầu sau khi đã deploy xong Phase 9: mỗi user có một dan
 
 Đã test qua curl: middleware chặn `/todos` khi chưa đăng nhập, empty state hiện đúng khi chưa có todo, cả 2 mục "đang làm" và "đã xong" hiển thị đúng sau khi seed dữ liệu thật, bottom nav xuất hiện ngay trong SSR HTML sau khi sửa lỗi session ở trên. Đã chạy lại `verify:srs` xác nhận không ảnh hưởng tính năng Flashcard.
 
-## Đơn giản hóa đăng nhập: access key thay cho email/mật khẩu
+## Đơn giản hóa đăng nhập: access key thay cho email/mật khẩu (ĐÃ BỊ THAY THẾ — xem mục "Bỏ hoàn toàn đăng nhập" ở cuối file)
 
 Vì chỉ một mình bạn dùng app, đã bỏ hẳn đăng nhập email/mật khẩu, thay bằng một mã khóa đơn (access key) để giảm phiền phức — nhưng **không bỏ xác thực hoàn toàn**, vì app đang public ra cả internet qua Cloudflare Tunnel (`app.web-rtc.cloud`), ai biết domain cũng truy cập được nếu không có gì chặn.
 
@@ -217,3 +217,19 @@ Vì chỉ một mình bạn dùng app, đã bỏ hẳn đăng nhập email/mật
 **Việc cần làm trên server:** thêm `ACCESS_KEY` vào `.env.production` (chọn một chuỗi dài, khó đoán — không dùng giá trị ngắn như lúc test local) rồi `docker compose up -d` để nạp lại env, sau đó dùng mã khóa đó để đăng nhập thay vì email/mật khẩu cũ.
 
 Đã test qua curl: sai mã khóa bị từ chối (401), đúng mã khóa đăng nhập thành công và truy cập được trang chủ, trang `/login` chỉ còn hiện đúng 1 ô "Mã khóa".
+
+## Bỏ hoàn toàn đăng nhập (thay thế access-key ở trên)
+
+Sau khi dùng thử access-key, quyết định bỏ hẳn luôn — chấp nhận rủi ro app public ra internet không còn lớp bảo vệ nào, có thể thêm lại sau nếu cần.
+
+**Đã xóa hoàn toàn:** `src/middleware.ts`, `src/lib/auth.ts`, `src/app/login/`, `src/app/api/auth/`, `src/types/next-auth.d.ts`, `src/components/sign-out-button.tsx`, dependency `next-auth`. Các biến môi trường `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `ACCESS_KEY` không còn cần thiết, đã xóa khỏi `.env`, `.env.example`, `.env.production.example` (server thật cũng nên xóa các biến này khỏi `.env.production` cho gọn, dù để thừa cũng không sao vì không còn code nào đọc tới).
+
+**Giữ nguyên model dữ liệu** (`User`, `Role`, `passwordHash`) để dễ thêm lại đăng nhập sau này nếu cần — chỉ bỏ lớp xác thực, không đổi schema. Thêm [src/lib/current-user.ts](src/lib/current-user.ts): hàm `getCurrentUser()` (bọc `React.cache()` để dedupe query trong cùng 1 request) lấy thẳng user có `role: ADMIN` đầu tiên trong DB, dùng thay cho `getServerSession()` ở mọi nơi (trang chủ, chi tiết deck, trang học, trang todos, và các Server Actions).
+
+Header bỏ avatar/tên/nút đăng xuất (không còn ý nghĩa gì khi chỉ có 1 user cố định), chỉ còn logo + tên app. `BottomNav` bỏ check `useSession()`, luôn hiển thị.
+
+**Bug phát hiện sau khi bỏ auth — lặp lại đúng bài học ở Phase 2:** sau khi bỏ `getServerSession()` (vốn đọc cookie nên luôn ép trang phải render động), Next.js tự coi `/` và `/todos` là có thể prerender tĩnh lúc build (do không còn tín hiệu "dynamic" nào), xác nhận qua build log đổi từ `ƒ (Dynamic)` sang `○ (Static)`. Nếu không sửa, dữ liệu deck/todo sẽ bị đóng băng từ lúc build mãi mãi. Đã thêm `export const dynamic = "force-dynamic";` vào [src/app/page.tsx](src/app/page.tsx) và [src/app/todos/page.tsx](src/app/todos/page.tsx) để khắc phục (cách này lần trước từng thất bại vì xung đột với `cacheComponents`, nhưng giờ `cacheComponents` đã tắt từ Phase 2 nên hoạt động bình thường). Các trang có route động như `/decks/[deckId]` tự động đã là dynamic sẵn (không cần thêm), `/decks/new` không đọc DB nên để tĩnh là đúng, không cần sửa.
+
+**Bài học chung cho các phase sau:** mỗi khi thêm một trang/route mới có đọc dữ liệu từ DB, phải kiểm tra lại route đó trong build log có bị đánh dấu `○ (Static)` một cách sai lầm không — đây là lỗi dễ tái diễn nhất trong project này (đã xảy ra 2 lần).
+
+Đã test qua curl: `/`, `/todos`, `/decks/new` đều truy cập trực tiếp được (HTTP 200, không còn redirect về `/login` vì `/login` đã không còn tồn tại), dữ liệu trang chủ hiển thị đúng. Chạy lại `verify:srs` xác nhận không ảnh hưởng tính năng Flashcard.
