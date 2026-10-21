@@ -77,5 +77,8 @@ model Todo {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   completed Boolean  @default(false)
+  date      String // "YYYY-MM-DD" theo giờ Việt Nam (UTC+7) — ngày việc này thuộc về
   createdAt DateTime @default(now())
+
+  @@index([userId, date])
 }

@@ -26,6 +26,14 @@ body {
   color: white;
 }
 
+/* iOS Safari tự zoom vào trang khi focus input có font-size nhỏ hơn 16px.
+   Ép tối thiểu 16px để không bị phóng to khi bật bàn phím. */
+input,
+textarea,
+select {
+  font-size: max(16px, 1rem);
+}
+
 /* Lật thẻ flashcard 3D */
 .flip-card-inner {
   transform-style: preserve-3d;

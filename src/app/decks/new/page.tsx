@@ -32,7 +32,7 @@ export default function NewDeckPage() {
             placeholder="Ví dụ: Từ vựng cơ bản"
             required
             autoFocus
-            className="w-full rounded-xl border border-indigo-950/10 bg-white px-3.5 py-2.5 text-sm outline-none transition-shadow focus:border-brand focus:ring-2 focus:ring-brand/20"
+            className="w-full rounded-xl border border-indigo-950/10 bg-white px-3.5 py-2.5 text-base outline-none transition-shadow focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
           <button
             type="submit"

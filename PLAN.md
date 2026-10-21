@@ -233,3 +233,21 @@ Header bỏ avatar/tên/nút đăng xuất (không còn ý nghĩa gì khi chỉ 
 **Bài học chung cho các phase sau:** mỗi khi thêm một trang/route mới có đọc dữ liệu từ DB, phải kiểm tra lại route đó trong build log có bị đánh dấu `○ (Static)` một cách sai lầm không — đây là lỗi dễ tái diễn nhất trong project này (đã xảy ra 2 lần).
 
 Đã test qua curl: `/`, `/todos`, `/decks/new` đều truy cập trực tiếp được (HTTP 200, không còn redirect về `/login` vì `/login` đã không còn tồn tại), dữ liệu trang chủ hiển thị đúng. Chạy lại `verify:srs` xác nhận không ảnh hưởng tính năng Flashcard.
+
+## Fix lỗi zoom bàn phím iOS + Todo theo ngày + màn hình thống kê
+
+### Fix zoom khi gõ trên iPhone
+Safari trên iOS tự động zoom cả trang khi focus vào `<input>`/`<textarea>` có `font-size` nhỏ hơn 16px — toàn bộ input trong app trước đó dùng `text-sm` (14px) nên bị lỗi này. Thay vì sửa từng input (dễ sót, phải nhớ áp dụng cho input thêm sau này), đã thêm rào chắn toàn cục trong [src/app/globals.css](src/app/globals.css): `input, textarea, select { font-size: max(16px, 1rem); }`. Đồng thời đổi class Tailwind từ `text-sm` sang `text-base` trên các input hiện có để class khớp với kích thước thật render ra.
+
+### Todo theo ngày
+Thêm field `date` (kiểu `String`, dạng `"YYYY-MM-DD"`, không dùng `DateTime` để tránh toàn bộ rắc rối quy đổi múi giờ) vào model `Todo`. Vì server có thể chạy múi giờ khác (Docker container thường mặc định UTC) trong khi người dùng ở Việt Nam, mọi khái niệm "hôm nay" đều tính theo giờ Việt Nam (UTC+7) qua [src/lib/date.ts](src/lib/date.ts) (`todayDateString`, `addDays`, `formatDateVi`), không dùng giờ hệ thống của server trực tiếp.
+
+**Xử lý migration an toàn với dữ liệu thật đã có trên server:** thêm cột bắt buộc (`NOT NULL`) vào bảng đã có dữ liệu sẽ làm Prisma tự sinh migration lỗi (copy dữ liệu cũ nhưng cột mới không có giá trị). Đã tự sửa tay file migration ([prisma/migrations/20261021080445_add_todo_date/migration.sql](prisma/migrations/20261021080445_add_todo_date/migration.sql)), backfill cột `date` cho các dòng cũ bằng `strftime('%Y-%m-%d', "createdAt", '+7 hours')` (quy đổi giờ tạo sang ngày theo giờ VN). Đã viết test độc lập bằng `better-sqlite3` xác nhận biểu thức quy đổi đúng trước khi áp dụng, vì migration này sẽ chạy thật trên dữ liệu production khi deploy.
+
+- `/todos` giờ có bộ điều hướng ngày (nút lùi/tiến + "Về hôm nay" khi đang xem ngày khác), chỉ hiện todo của đúng ngày đang xem. Thêm việc mới sẽ gắn vào ngày đang xem (không phải luôn luôn "hôm nay") — tiện nếu muốn lên kế hoạch việc cho ngày mai.
+- [src/lib/todos.ts](src/lib/todos.ts): `listTodosByDate`, và `getDailyStats(userId, numDays)` tổng hợp số việc/số việc đã xong theo từng ngày trong N ngày gần nhất (gộp trong JS sau khi query 1 lần, không dùng SQL `GROUP BY` để đơn giản và dễ debug hơn).
+
+### Màn hình thống kê (`/todos/stats`)
+Liệt kê 30 ngày gần nhất (mới nhất lên đầu), mỗit ngày hiện: "Không có việc" (xám, không có todo nào), "Hoàn thành X/X" (xanh lá, xong hết), hoặc "X/Y" kèm thanh tiến độ cam (còn thiếu). Bấm vào một ngày sẽ nhảy thẳng tới `/todos?date=...` của ngày đó. Có link truy cập từ icon biểu đồ ở góc phải trang `/todos`.
+
+Đã test qua curl với dữ liệu thật trải trên 2 ngày (hôm nay 1/2 xong, hôm qua 2/2 xong): trang `/todos` lọc đúng theo ngày qua query param, trang `/todos/stats` hiển thị đúng "Hoàn thành 2/2" cho hôm qua và "1/2" (tiến độ cam) cho hôm nay, thứ trong tuần tính đúng. Đã xác nhận cả 2 route mới đều `ƒ (Dynamic)` trong build log (không lặp lại lỗi static-prerender). Đã kiểm tra rule CSS chống zoom có mặt trong file CSS build ra. Chạy lại `verify:srs` không bị ảnh hưởng.

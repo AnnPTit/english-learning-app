@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 
-export async function createTodo(formData: FormData) {
+export async function createTodo(date: string, formData: FormData) {
   const user = await getCurrentUser();
   const title = String(formData.get("title") ?? "").trim();
   if (!title) return;
 
-  await prisma.todo.create({ data: { userId: user.id, title } });
+  await prisma.todo.create({ data: { userId: user.id, title, date } });
   revalidatePath("/todos");
 }
 
