@@ -11,6 +11,7 @@ import {
   Sparkle,
 } from "lucide-react";
 import { submitReviewAction } from "../../actions";
+import { SpeakButton } from "@/components/speak-button";
 import type { Rating } from "@/lib/srs";
 
 type CardData = {
@@ -123,11 +124,18 @@ export function StudySession({
         </div>
       </div>
 
-      <div style={{ perspective: "1200px" }} className="flex flex-1">
-        <button
-          type="button"
+      <div style={{ perspective: "1200px" }} className="relative flex flex-1">
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => setFlipped((f) => !f)}
-          className="relative w-full flex-1"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setFlipped((f) => !f);
+            }
+          }}
+          className="relative w-full flex-1 cursor-pointer"
         >
           <div
             className={`flip-card-inner relative h-full min-h-56 w-full ${flipped ? "is-flipped" : ""}`}
@@ -150,7 +158,15 @@ export function StudySession({
               )}
             </div>
           </div>
-        </button>
+        </div>
+
+        {!flipped && (
+          <SpeakButton
+            text={current.term}
+            size="size-5"
+            className="absolute top-3 right-3 flex size-9 items-center justify-center rounded-full bg-indigo-50 text-brand-dark transition-colors hover:bg-indigo-100"
+          />
+        )}
       </div>
 
       {flipped && (

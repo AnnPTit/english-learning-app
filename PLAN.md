@@ -12,11 +12,11 @@ Tech stack: Next.js (App Router, TypeScript) + Tailwind CSS + Prisma + SQLite + 
 - [x] Phase 3: Data model và thuật toán SRS (Deck, Card, ReviewLog, SM-2)
 - [x] Phase 4: Giao diện học Flashcard (mobile first)
 - [ ] Phase 5: Giao diện responsive cho PC (sidebar, phím tắt, table view) — *tạm bỏ qua theo yêu cầu, quay lại sau*
-- [ ] Phase 6: Module Quiz ngữ pháp — *tạm bỏ qua theo yêu cầu, quay lại sau*
+- [x] Phase 6: Module luyện tập từ vựng (nghe điền từ, nhìn nghĩa điền từ) + phát âm — phạm vi thực tế khác mô tả gốc (không làm trắc nghiệm ngữ pháp), xem mục chi tiết
 - [ ] Phase 7: Trang quản trị (Admin dashboard) — *tạm bỏ qua theo yêu cầu, quay lại sau*
 - [x] Phase 8: PWA hóa cho iPhone (manifest, icon, service worker)
 - [x] Phase 9: Đóng gói Docker và deploy lên Ubuntu — đã deploy thật, test trên iPhone xác nhận cài PWA và chạy toàn màn hình thành công
-- [ ] Phase 10: Mở rộng sau MVP (TTS, push notification, thống kê, backup tự động)
+- [ ] Phase 10: Mở rộng sau MVP (push notification, backup tự động) — phần TTS và thống kê đã làm sớm hơn dự kiến, xem các mục riêng
 - [x] Tính năng ngoài kế hoạch: Todo list cá nhân (`/todos`), thêm sau khi deploy xong Phase 9
 
 ## Chi tiết từng phase
@@ -69,8 +69,8 @@ Thuật toán SM-2 thuần hàm ở [src/lib/srs.ts](src/lib/srs.ts) (`reviewCar
 ### Phase 5: Giao diện responsive cho PC
 Layout rộng hơn cho desktop (sidebar điều hướng, nhiều cột), phím tắt bàn phím khi học (1-4 cho các mức đánh giá), table view để thêm/sửa từ vựng hàng loạt tiện hơn trên PC.
 
-### Phase 6: Module Quiz ngữ pháp
-Sinh câu hỏi trắc nghiệm/điền từ (có thể lấy từ Deck để tạo distractor), chấm điểm tự động, lưu lịch sử làm bài.
+### Phase 6: Module luyện tập từ vựng (hoàn thành, phạm vi đổi theo yêu cầu thực tế)
+Thay vì trắc nghiệm ngữ pháp như mô tả gốc, thực tế làm theo yêu cầu: phát âm + 2 dạng bài fill-in-the-blank luyện từ vựng. Chi tiết đầy đủ ở mục "Phát âm và luyện tập từ vựng" cuối file.
 
 ### Phase 7: Trang quản trị (Admin dashboard)
 Route `/admin`, chỉ ADMIN truy cập (kiểm tra role qua middleware). Quản lý user, quản lý Deck/Card chung cho cả nhà, import CSV, ngân hàng câu hỏi Quiz, dashboard thống kê tiến độ từng thành viên, nút backup DB thủ công.
@@ -251,3 +251,28 @@ Thêm field `date` (kiểu `String`, dạng `"YYYY-MM-DD"`, không dùng `DateTi
 Liệt kê 30 ngày gần nhất (mới nhất lên đầu), mỗit ngày hiện: "Không có việc" (xám, không có todo nào), "Hoàn thành X/X" (xanh lá, xong hết), hoặc "X/Y" kèm thanh tiến độ cam (còn thiếu). Bấm vào một ngày sẽ nhảy thẳng tới `/todos?date=...` của ngày đó. Có link truy cập từ icon biểu đồ ở góc phải trang `/todos`.
 
 Đã test qua curl với dữ liệu thật trải trên 2 ngày (hôm nay 1/2 xong, hôm qua 2/2 xong): trang `/todos` lọc đúng theo ngày qua query param, trang `/todos/stats` hiển thị đúng "Hoàn thành 2/2" cho hôm qua và "1/2" (tiến độ cam) cho hôm nay, thứ trong tuần tính đúng. Đã xác nhận cả 2 route mới đều `ƒ (Dynamic)` trong build log (không lặp lại lỗi static-prerender). Đã kiểm tra rule CSS chống zoom có mặt trong file CSS build ra. Chạy lại `verify:srs` không bị ảnh hưởng.
+
+## Phát âm và luyện tập từ vựng (hoàn thành Phase 6, phạm vi đổi theo yêu cầu thực tế)
+
+Yêu cầu ban đầu của Phase 6 trong kế hoạch là "trắc nghiệm ngữ pháp", nhưng khi thực hiện thực tế người dùng yêu cầu cụ thể hơn: phát âm từ vựng + 2 dạng bài fill-in-the-blank (không phải trắc nghiệm). Đánh dấu hoàn thành Phase 6 với phạm vi này.
+
+### Phát âm
+[src/components/speak-button.tsx](src/components/speak-button.tsx): dùng **Web Speech API** (`SpeechSynthesisUtterance`) có sẵn trong trình duyệt (kể cả Safari iOS), không cần dịch vụ TTS bên ngoài hay API key, không tốn phí, không cần cấu hình gì thêm trên server. Giới hạn: chất lượng giọng đọc phụ thuộc vào engine TTS của từng thiết bị/trình duyệt, không kiểm soát được giọng chính xác như dịch vụ TTS trả phí (Google/Amazon Polly...).
+
+Đã gắn nút phát âm ở 3 chỗ: danh sách thẻ trong trang quản lý deck, mặt trước thẻ flashcard lúc ôn tập ([src/app/decks/[deckId]/study/study-session.tsx](src/app/decks/[deckId]/study/study-session.tsx)), và màn hình luyện tập dạng nghe.
+
+**Thay đổi cấu trúc khi thêm nút phát âm vào flashcard:** vùng lật thẻ trước đó là một thẻ `<button>` bao trọn cả mặt trước/sau — lồng thêm `<button>` phát âm bên trong sẽ là HTML không hợp lệ (button trong button) và gây xung đột sự kiện click. Đã đổi vùng lật thẻ từ `<button>` sang `<div role="button" tabIndex={0}>` với `onKeyDown` xử lý Enter/Space (giữ đúng accessibility), nút phát âm đặt làm phần tử anh em (sibling) định vị `absolute` đè lên góc trên, không còn xung đột sự kiện.
+
+### Trang luyện tập (`/decks/[deckId]/quiz`)
+Hoàn toàn chạy phía client (không cần Server Action nào) — dùng toàn bộ thẻ trong deck (không lọc theo lịch SRS như trang Ôn tập, vì đây là công cụ luyện tập bổ trợ chứ không phải một phần chu trình spaced repetition).
+
+- [quiz-session.tsx](src/app/decks/[deckId]/quiz/quiz-session.tsx): màn hình chọn dạng bài → làm bài → kết quả.
+- 2 dạng bài: **Nghe điền từ** (phát âm tự động khi hiện câu hỏi, gõ lại từ nghe được) và **Nhìn nghĩa điền từ** (hiện nghĩa tiếng Việt, gõ từ tiếng Anh tương ứng).
+- Chấm đúng/sai bằng so khớp chuỗi (bỏ qua hoa/thường và khoảng trắng thừa), không có fuzzy-match cho lỗi gõ nhỏ.
+- Thứ tự câu hỏi xáo trộn ngẫu nhiên mỗi lần bắt đầu (kể cả khi bấm "Làm lại").
+- Kết thúc hiện điểm số (X/Y câu đúng, %), không lưu lịch sử làm bài lâu dài vào DB (khác với mô tả gốc "lưu lịch sử làm bài" của Phase 6) — quyết định giữ đơn giản vì người dùng không yêu cầu xem lại lịch sử các lần luyện tập, có thể thêm sau nếu cần.
+- Nút "Luyện tập" (màu nhạt hơn, phụ) đặt cạnh nút "Ôn tập" (chính) trong trang quản lý deck.
+
+Đã test qua curl với dữ liệu thật: trang quản lý deck hiện đúng nút "Luyện tập" + nút phát âm cho từng thẻ (xác nhận qua `aria-label`), trang `/quiz` hiện đúng màn chọn dạng bài với cả 2 lựa chọn, trang học flashcard vẫn hoạt động đúng sau khi đổi cấu trúc button→div.
+
+**Giới hạn đã biết:** không test được việc thực sự phát ra âm thanh, hay luồng gõ trả lời + kiểm tra đúng/sai bằng tương tác thật (cần JS chạy trong trình duyệt thật, không mô phỏng được qua curl) — đã xác nhận logic qua đọc code cẩn thận, cần tự thử trên điện thoại/máy tính thật và báo lại nếu phát âm không hoạt động hoặc có hành vi lạ.

@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, GraduationCap, Trash2, Plus, Inbox } from "lucide-react";
+import {
+  ArrowLeft,
+  GraduationCap,
+  Dumbbell,
+  Trash2,
+  Plus,
+  Inbox,
+} from "lucide-react";
 import { getCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
+import { SpeakButton } from "@/components/speak-button";
 import { createCard, deleteCard } from "../actions";
 
 export default async function DeckPage({
@@ -42,13 +50,22 @@ export default async function DeckPage({
           </p>
         </div>
         {deck.cards.length > 0 && (
-          <Link
-            href={`/decks/${deck.id}/study`}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-300 transition-colors hover:bg-brand-dark"
-          >
-            <GraduationCap className="size-4" />
-            Ôn tập
-          </Link>
+          <div className="flex shrink-0 flex-col gap-2">
+            <Link
+              href={`/decks/${deck.id}/study`}
+              className="flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-300 transition-colors hover:bg-brand-dark"
+            >
+              <GraduationCap className="size-4" />
+              Ôn tập
+            </Link>
+            <Link
+              href={`/decks/${deck.id}/quiz`}
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-50 px-4 py-2 text-sm font-medium text-brand-dark transition-colors hover:bg-indigo-100"
+            >
+              <Dumbbell className="size-4" />
+              Luyện tập
+            </Link>
+          </div>
         )}
       </div>
 
@@ -58,8 +75,15 @@ export default async function DeckPage({
             key={card.id}
             className="flex items-start justify-between gap-3 rounded-xl border border-indigo-950/5 bg-white p-3.5 shadow-sm shadow-indigo-950/5"
           >
-            <div className="min-w-0">
-              <p className="font-medium text-foreground">{card.term}</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1">
+                <p className="font-medium text-foreground">{card.term}</p>
+                <SpeakButton
+                  text={card.term}
+                  size="size-3.5"
+                  className="flex size-6 shrink-0 items-center justify-center rounded-full text-foreground/30 transition-colors hover:bg-indigo-50 hover:text-brand-dark"
+                />
+              </div>
               <p className="text-sm text-foreground/60">{card.meaning}</p>
               {card.example && (
                 <p className="mt-0.5 truncate text-xs text-foreground/35 italic">
