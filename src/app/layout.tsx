@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
+import { ViewportHeightFix } from "@/components/viewport-height-fix";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -42,9 +43,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="vi"
-      className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-[var(--app-height)] antialiased`}
     >
-      <body className="flex h-dvh flex-col overflow-y-auto">
+      <body className="flex h-[var(--app-height)] flex-col overflow-y-auto">
+        <ViewportHeightFix />
         <Providers>
           <Header />
           {children}

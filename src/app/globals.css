@@ -5,6 +5,8 @@
   --foreground: #1e1b4b;
   --brand: #4f46e5;
   --brand-dark: #4338ca;
+  /* Giá trị mặc định trước khi ViewportHeightFix chạy (JS tắt vẫn có fallback hợp lý). */
+  --app-height: 100dvh;
 }
 
 @theme inline {

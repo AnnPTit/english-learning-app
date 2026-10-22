@@ -297,3 +297,14 @@ Nguyên nhân: `<html>`/`<body>` trước đó dùng `h-full` (tương đương 
 Đã sửa trong [src/app/layout.tsx](src/app/layout.tsx): đổi `html`/`body` sang dùng `h-dvh` (dynamic viewport height — đơn vị CSS hiện đại tự động co giãn theo bàn phím/thanh địa chỉ trình duyệt ẩn hiện), và cho `body` tự làm scroll container (`overflow-y-auto`) thay vì để `html`/document cuộn mặc định — giúp Header (`sticky`) và BottomNav (`fixed`) định vị đúng theo viewport thực tế đang hiển thị. Đồng thời bỏ `flex-1` ép căn giữa cứng ở khối câu hỏi trong [quiz-session.tsx](src/app/decks/[deckId]/quiz/quiz-session.tsx) — trước đó nó cố chiếm hết khoảng trống dọc còn lại rồi căn giữa, khiến ô nhập liệu bị đẩy xuống thấp một cách không cần thiết khi không gian bị bàn phím ăn bớt.
 
 Đã xác nhận qua curl: class `h-dvh` biên dịch đúng thành `height: 100dvh` trong CSS, HTML render ra đúng class mới. Không tự test được hiệu ứng co giãn thật khi bàn phím iOS bật lên (cần thiết bị thật), cần tự thử lại và báo kết quả.
+
+**Cập nhật: `dvh` chưa đủ, vẫn phải cuộn khi bàn phím hiện lên.** Lý do: `dvh` (và mọi đơn vị viewport CSS) trên iOS Safari chỉ co giãn khi thanh địa chỉ ẩn/hiện, KHÔNG co giãn khi bàn phím ảo bật lên — đây là giới hạn riêng, đã biết của WebKit, không phải lỗi cấu hình. Giải pháp đúng: dùng **Visual Viewport API** (`window.visualViewport`), API này báo đúng vùng hiển thị thực tế kể cả khi có bàn phím.
+
+Đã thêm [src/components/viewport-height-fix.tsx](src/components/viewport-height-fix.tsx): component client rỗng (không render gì), chỉ chạy side-effect theo dõi sự kiện `resize` của `visualViewport`, gán chiều cao thực tế vào biến CSS `--app-height` trên `document.documentElement`. `html`/`body` trong [layout.tsx](src/app/layout.tsx) đổi từ `h-dvh` sang `h-[var(--app-height)]` (Tailwind arbitrary value tham chiếu biến CSS). Có fallback `--app-height: 100dvh` trong `globals.css` phòng khi JS chưa kịp chạy hoặc bị tắt.
+
+Thêm phòng hờ ở ô nhập của trang Luyện tập: `onFocus` gọi `scrollIntoView({ block: "center" })` sau 300ms (đợi animation bàn phím chạy xong mới cuộn, gọi ngay lúc focus sẽ cuộn sai vị trí vì layout chưa kịp co lại).
+
+**Giới hạn đã biết:** vẫn không tự test được trên thiết bị thật (cần iPhone thật, bàn phím ảo không mô phỏng được qua curl/code review). Đây là lần thử fix thứ 2 cho cùng vấn đề — nếu vẫn còn lỗi sau khi deploy, cần debug trực tiếp bằng Safari Web Inspector kết nối từ Mac (Settings > Safari > Advanced > Web Inspector trên iPhone, rồi Safari trên Mac > Develop > tên iPhone) để xem chính xác layout đang tính toán sai ở đâu, thay vì đoán tiếp.
+
+### Hiện nghĩa tiếng Việt khi trả lời đúng ở chế độ "Nghe điền từ"
+Theo yêu cầu, khi người dùng gõ đúng từ ở chế độ nghe, dòng thông báo "Chính xác!" giờ hiện thêm nghĩa tiếng Việt (`Chính xác! Nghĩa: ...`) để củng cố trí nhớ luôn trong cùng một lượt, không cần tra lại. Chế độ "Nhìn nghĩa điền từ" không cần thêm vì nghĩa đã hiển thị sẵn làm câu hỏi.

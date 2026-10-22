@@ -251,6 +251,14 @@ export function QuizSession({
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onFocus={(e) => {
+            const target = e.target;
+            // Đợi bàn phím iOS trồi lên xong rồi mới cuộn, gọi ngay lúc
+            // focus sẽ cuộn sai vị trí vì layout chưa kịp co lại.
+            setTimeout(() => {
+              target.scrollIntoView({ block: "center", behavior: "smooth" });
+            }, 300);
+          }}
           disabled={checked !== null}
           placeholder="Gõ câu trả lời..."
           autoCapitalize="off"
@@ -278,7 +286,13 @@ export function QuizSession({
             ) : (
               <XCircle className="size-4 shrink-0" />
             )}
-            {checked ? "Chính xác!" : `Chưa đúng. Đáp án: ${current.term}`}
+            <span>
+              {checked
+                ? mode === "listen"
+                  ? `Chính xác! Nghĩa: ${current.meaning}`
+                  : "Chính xác!"
+                : `Chưa đúng. Đáp án: ${current.term}`}
+            </span>
           </div>
         )}
 
