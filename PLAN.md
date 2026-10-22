@@ -285,3 +285,15 @@ Thêm field `ipa` (`String?`, tùy chọn — không bắt buộc nhập) vào m
 - Hiển thị IPA (nếu có) ở 2 chỗ: ngay cạnh từ trong danh sách thẻ của trang quản lý deck, và trên mặt trước thẻ flashcard lúc ôn tập (dưới từ, trên dòng "Chạm để xem nghĩa").
 
 Đã test qua curl với dữ liệu thật (1 thẻ có IPA, 1 thẻ không có): cả form, danh sách thẻ, và màn hình ôn tập đều hiển thị đúng — thẻ có IPA thấy phiên âm, thẻ không có thì không hiện gì thừa. Chạy lại `verify:srs` không bị ảnh hưởng.
+
+## Phát âm không có tiếng trên iPhone, và lỗi bàn phím che nửa màn hình trang Luyện tập
+
+### Phát âm không ra tiếng
+Nguyên nhân xác nhận qua thực tế: **công tắc im lặng vật lý** của iPhone đang bật (hạt cam hiện ra). iOS tắt tiếng Web Speech API khi bật công tắc này — đây là hành vi mặc định của iOS, không phải lỗi code. Gạt công tắc về chế độ rung chuông là nghe được ngay. Không có cách nào phía web app bỏ qua được công tắc này (khác với app native có thể tự khai báo audio session category để phớt lờ).
+
+### Bàn phím iOS che mất nửa màn hình ở trang Luyện tập
+Nguyên nhân: `<html>`/`<body>` trước đó dùng `h-full` (tương đương `height: 100%` ở phần tử gốc, thực chất ăn theo chiều cao viewport "lớn nhất"/layout viewport) — đơn vị này **không tự co lại** khi bàn phím iOS hiện lên, nên nội dung bị bàn phím che mất một phần mà không có cách nào cuộn lên nhìn thấy đúng cách (phải tự cuộn dò).
+
+Đã sửa trong [src/app/layout.tsx](src/app/layout.tsx): đổi `html`/`body` sang dùng `h-dvh` (dynamic viewport height — đơn vị CSS hiện đại tự động co giãn theo bàn phím/thanh địa chỉ trình duyệt ẩn hiện), và cho `body` tự làm scroll container (`overflow-y-auto`) thay vì để `html`/document cuộn mặc định — giúp Header (`sticky`) và BottomNav (`fixed`) định vị đúng theo viewport thực tế đang hiển thị. Đồng thời bỏ `flex-1` ép căn giữa cứng ở khối câu hỏi trong [quiz-session.tsx](src/app/decks/[deckId]/quiz/quiz-session.tsx) — trước đó nó cố chiếm hết khoảng trống dọc còn lại rồi căn giữa, khiến ô nhập liệu bị đẩy xuống thấp một cách không cần thiết khi không gian bị bàn phím ăn bớt.
+
+Đã xác nhận qua curl: class `h-dvh` biên dịch đúng thành `height: 100dvh` trong CSS, HTML render ra đúng class mới. Không tự test được hiệu ứng co giãn thật khi bàn phím iOS bật lên (cần thiết bị thật), cần tự thử lại và báo kết quả.

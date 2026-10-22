@@ -222,7 +222,7 @@ export function QuizSession({
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-indigo-950/5 bg-white p-6 text-center shadow-sm shadow-indigo-950/5">
+      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-indigo-950/5 bg-white p-6 text-center shadow-sm shadow-indigo-950/5">
         {mode === "listen" ? (
           <>
             <p className="text-xs text-foreground/35">
