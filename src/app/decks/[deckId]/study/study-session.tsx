@@ -17,6 +17,7 @@ import type { Rating } from "@/lib/srs";
 type CardData = {
   id: string;
   term: string;
+  ipa: string | null;
   meaning: string;
   example: string | null;
 };
@@ -144,6 +145,11 @@ export function StudySession({
               <p className="text-2xl font-semibold text-foreground">
                 {current.term}
               </p>
+              {current.ipa && (
+                <p className="font-mono text-sm text-foreground/40">
+                  {current.ipa}
+                </p>
+              )}
               <p className="text-xs text-foreground/35">
                 Chạm để xem nghĩa
               </p>

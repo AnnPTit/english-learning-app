@@ -30,11 +30,12 @@ export async function createCard(deckId: string, formData: FormData) {
   await assertCanEditDeck(deckId, user.id);
 
   const term = String(formData.get("term") ?? "").trim();
+  const ipa = String(formData.get("ipa") ?? "").trim() || null;
   const meaning = String(formData.get("meaning") ?? "").trim();
   const example = String(formData.get("example") ?? "").trim() || null;
   if (!term || !meaning) throw new Error("Thiếu từ hoặc nghĩa");
 
-  await prisma.card.create({ data: { deckId, term, meaning, example } });
+  await prisma.card.create({ data: { deckId, term, ipa, meaning, example } });
   revalidatePath(`/decks/${deckId}`);
   revalidatePath("/");
 }

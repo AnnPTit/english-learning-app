@@ -76,8 +76,13 @@ export default async function DeckPage({
             className="flex items-start justify-between gap-3 rounded-xl border border-indigo-950/5 bg-white p-3.5 shadow-sm shadow-indigo-950/5"
           >
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <p className="font-medium text-foreground">{card.term}</p>
+                {card.ipa && (
+                  <p className="font-mono text-xs text-foreground/40">
+                    {card.ipa}
+                  </p>
+                )}
                 <SpeakButton
                   text={card.term}
                   size="size-3.5"
@@ -128,6 +133,11 @@ export default async function DeckPage({
             placeholder="Từ tiếng Anh"
             required
             className="w-full rounded-xl border border-indigo-950/10 bg-white px-3.5 py-2.5 text-base outline-none transition-shadow focus:border-brand focus:ring-2 focus:ring-brand/20"
+          />
+          <input
+            name="ipa"
+            placeholder="Phiên âm IPA, ví dụ /əˈpiːl/ (không bắt buộc)"
+            className="w-full rounded-xl border border-indigo-950/10 bg-white px-3.5 py-2.5 font-mono text-base outline-none transition-shadow focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
           <input
             name="meaning"

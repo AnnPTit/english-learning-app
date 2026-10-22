@@ -276,3 +276,12 @@ Hoàn toàn chạy phía client (không cần Server Action nào) — dùng toà
 Đã test qua curl với dữ liệu thật: trang quản lý deck hiện đúng nút "Luyện tập" + nút phát âm cho từng thẻ (xác nhận qua `aria-label`), trang `/quiz` hiện đúng màn chọn dạng bài với cả 2 lựa chọn, trang học flashcard vẫn hoạt động đúng sau khi đổi cấu trúc button→div.
 
 **Giới hạn đã biết:** không test được việc thực sự phát ra âm thanh, hay luồng gõ trả lời + kiểm tra đúng/sai bằng tương tác thật (cần JS chạy trong trình duyệt thật, không mô phỏng được qua curl) — đã xác nhận logic qua đọc code cẩn thận, cần tự thử trên điện thoại/máy tính thật và báo lại nếu phát âm không hoạt động hoặc có hành vi lạ.
+
+## Phiên âm IPA cho từ vựng (tùy chọn)
+
+Thêm field `ipa` (`String?`, tùy chọn — không bắt buộc nhập) vào model `Card`. Vì là cột nullable nên migration không cần backfill gì cho dữ liệu cũ (khác với trường hợp `Todo.date` trước đó).
+
+- Form "Thêm từ mới" ở trang quản lý deck có thêm ô nhập IPA (placeholder gợi ý ví dụ `/əˈpiːl/`, font monospace cho dễ đọc ký tự phiên âm), để trống vẫn thêm từ được bình thường.
+- Hiển thị IPA (nếu có) ở 2 chỗ: ngay cạnh từ trong danh sách thẻ của trang quản lý deck, và trên mặt trước thẻ flashcard lúc ôn tập (dưới từ, trên dòng "Chạm để xem nghĩa").
+
+Đã test qua curl với dữ liệu thật (1 thẻ có IPA, 1 thẻ không có): cả form, danh sách thẻ, và màn hình ôn tập đều hiển thị đúng — thẻ có IPA thấy phiên âm, thẻ không có thì không hiện gì thừa. Chạy lại `verify:srs` không bị ảnh hưởng.

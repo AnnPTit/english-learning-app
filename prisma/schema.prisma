@@ -47,6 +47,7 @@ model Card {
   deckId    String
   deck      Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
   term      String
+  ipa       String? // phiên âm IPA, ví dụ "/əˈpiːl/" — tùy chọn, không bắt buộc
   meaning   String
   example   String?
   createdAt DateTime @default(now())

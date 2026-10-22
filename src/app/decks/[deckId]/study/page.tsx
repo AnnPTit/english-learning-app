@@ -26,6 +26,7 @@ export default async function StudyPage({
         initialCards={dueCards.map((c) => ({
           id: c.id,
           term: c.term,
+          ipa: c.ipa,
           meaning: c.meaning,
           example: c.example,
         }))}
